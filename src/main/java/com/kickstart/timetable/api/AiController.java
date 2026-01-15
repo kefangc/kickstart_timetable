@@ -1,6 +1,5 @@
 package com.kickstart.timetable.api;
 
-import com.kickstart.timetable.api.dto.GenerateScheduleRequest;
 import com.kickstart.timetable.api.dto.ParseTaskRequest;
 import com.kickstart.timetable.service.AiAssistantService;
 import com.kickstart.timetable.service.AiStudioChatClient;
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -105,12 +103,4 @@ public class AiController {
         return aiAssistantService.parseTask(req.getInput());
     }
 
-    @Operation(summary = "生成智能排期", description = "根据课程与任务生成建议排期块")
-    @PostMapping(value = "/generate-schedule", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public List<Map<String, Object>> generateSchedule(@RequestBody GenerateScheduleRequest req) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("courses", req.getCourses());
-        payload.put("tasks", req.getTasks());
-        return aiAssistantService.generateSchedule(payload);
-    }
 }
