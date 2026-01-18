@@ -9,13 +9,21 @@ import com.kickstart.timetable.util.BellScheduleDefaults;
 import com.kickstart.timetable.util.ImportFormatDefaults;
 import com.kickstart.timetable.util.JsonArrayExtractor;
 import com.kickstart.timetable.util.PastelPalette;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.stereotype.Service;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.imageio.ImageIO;
 
 @Service
 public class TimetableAiService {
@@ -31,7 +39,8 @@ public class TimetableAiService {
     }
 
     public Map<String, Object> parseTimetableFromImage(byte[] imageBytes) {
-        String markdown = paddle.extractMarkdown(imageBytes, 1);
+        byte[] normalized = normalizeImageBytes(imageBytes);
+        String markdown = paddle.extractMarkdown(normalized, 1);
         String ndjson = markdownToNdjson(markdown);
 
         Map<String, Object> out = new HashMap<>();
@@ -39,6 +48,93 @@ public class TimetableAiService {
         // 给前端调试用（你可以删掉）
         out.put("markdown", markdown);
         return out;
+    }
+
+    private byte[] normalizeImageBytes(byte[] imageBytes) {
+        if (imageBytes == null || imageBytes.length == 0) {
+            return imageBytes;
+        }
+        String text = new String(imageBytes, StandardCharsets.UTF_8).trim();
+        if (text.startsWith("data:") && text.contains("base64,")) {
+            int idx = text.indexOf("base64,");
+            String payload = text.substring(idx + "base64,".length()).trim();
+            byte[] decoded = decodeBase64(payload);
+            return decoded == null ? imageBytes : convertPdfIfNeeded(decoded);
+        }
+        if (looksLikeBase64(text)) {
+            byte[] decoded = decodeBase64(text);
+            if (decoded != null && isLikelyBinaryImage(decoded)) {
+                return convertPdfIfNeeded(decoded);
+            }
+        }
+        return convertPdfIfNeeded(imageBytes);
+    }
+
+    private boolean looksLikeBase64(String text) {
+        if (text.length() < 128) {
+            return false;
+        }
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (Character.isWhitespace(ch)) {
+                continue;
+            }
+            if ((ch >= 'A' && ch <= 'Z')
+                    || (ch >= 'a' && ch <= 'z')
+                    || (ch >= '0' && ch <= '9')
+                    || ch == '+' || ch == '/' || ch == '=') {
+                continue;
+            }
+            return false;
+        }
+        return text.length() % 4 == 0;
+    }
+
+    private byte[] decodeBase64(String payload) {
+        try {
+            return Base64.getDecoder().decode(payload);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private boolean isLikelyBinaryImage(byte[] bytes) {
+        if (bytes.length < 4) {
+            return false;
+        }
+        if ((bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8) {
+            return true; // JPEG
+        }
+        if ((bytes[0] & 0xFF) == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) {
+            return true; // PNG
+        }
+        if (bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46) {
+            return true; // PDF
+        }
+        if (bytes.length >= 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46
+                && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50) {
+            return true; // WEBP
+        }
+        return false;
+    }
+
+    private byte[] convertPdfIfNeeded(byte[] bytes) {
+        if (!isPdf(bytes)) {
+            return bytes;
+        }
+        try (PDDocument document = PDDocument.load(bytes)) {
+            PDFRenderer renderer = new PDFRenderer(document);
+            BufferedImage image = renderer.renderImageWithDPI(0, 200);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", output);
+            return output.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("PDF 转图片失败: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isPdf(byte[] bytes) {
+        return bytes.length >= 4 && bytes[0] == 0x25 && bytes[1] == 0x50 && bytes[2] == 0x44 && bytes[3] == 0x46;
     }
 
     /**

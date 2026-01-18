@@ -1,15 +1,31 @@
 package com.kickstart.timetable.api.dto;
 
-import java.util.List;
-import java.util.Map;
-
 public class GenerateScheduleRequest {
-    private List<Map<String, Object>> courses;
-    private List<Map<String, Object>> tasks;
+    private String currentDateTime;
+    private CourseTablePayload courseTable;
+    private java.util.List<TaskPayload> tasks;
 
-    public List<Map<String, Object>> getCourses() { return courses; }
-    public void setCourses(List<Map<String, Object>> courses) { this.courses = courses; }
+    public String getCurrentDateTime() {
+        return currentDateTime;
+    }
 
-    public List<Map<String, Object>> getTasks() { return tasks; }
-    public void setTasks(List<Map<String, Object>> tasks) { this.tasks = tasks; }
+    public void setCurrentDateTime(String currentDateTime) {
+        this.currentDateTime = currentDateTime;
+    }
+
+    public CourseTablePayload getCourseTable() {
+        return courseTable;
+    }
+
+    public void setCourseTable(CourseTablePayload courseTable) {
+        this.courseTable = courseTable;
+    }
+
+    public java.util.List<TaskPayload> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(java.util.List<TaskPayload> tasks) {
+        this.tasks = tasks;
+    }
 }

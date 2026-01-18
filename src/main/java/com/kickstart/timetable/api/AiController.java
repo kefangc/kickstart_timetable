@@ -4,6 +4,7 @@ import com.kickstart.timetable.api.dto.GenerateScheduleRequest;
 import com.kickstart.timetable.api.dto.ParseTaskRequest;
 import com.kickstart.timetable.service.AiAssistantService;
 import com.kickstart.timetable.service.AiStudioChatClient;
+import com.kickstart.timetable.service.SchedulePlannerService;
 import com.kickstart.timetable.service.TimetableAiService;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,11 +25,14 @@ public class AiController {
     private final TimetableAiService timetableAiService;
     private final AiAssistantService aiAssistantService;
     private final AiStudioChatClient aiStudioChatClient;
+    private final SchedulePlannerService schedulePlannerService;
 
-    public AiController(TimetableAiService timetableAiService, AiAssistantService aiAssistantService, AiStudioChatClient aiStudioChatClient) {
+    public AiController(TimetableAiService timetableAiService, AiAssistantService aiAssistantService, AiStudioChatClient aiStudioChatClient,
+                        SchedulePlannerService schedulePlannerService) {
         this.timetableAiService = timetableAiService;
         this.aiAssistantService = aiAssistantService;
         this.aiStudioChatClient = aiStudioChatClient;
+        this.schedulePlannerService = schedulePlannerService;
     }
 
     @Operation(summary = "AIStudio 连通性测试", description = "最小化调用大模型，返回解析出的 content 以及部分原始响应字段，便于确认 Key/域名/路径是否正确")
@@ -108,9 +112,6 @@ public class AiController {
     @Operation(summary = "生成智能排期", description = "根据课程与任务生成建议排期块")
     @PostMapping(value = "/generate-schedule", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public List<Map<String, Object>> generateSchedule(@RequestBody GenerateScheduleRequest req) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("courses", req.getCourses());
-        payload.put("tasks", req.getTasks());
-        return aiAssistantService.generateSchedule(payload);
+        return schedulePlannerService.generateSchedule(req);
     }
 }
