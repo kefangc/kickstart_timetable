@@ -20,6 +20,8 @@ public class AiStudioProperties {
     /**
      * Model used for structured outputs (timetable parsing). Should be a model that supports
      * response_format (structured output), such as ERNIE 4.5 / 4.0-turbo / 3.5.
+     * ernie-4.5-turbo-128k-preview
+     * ernie-speed-128k
      */
     private String structuredModel = "ernie-4.5-turbo-128k-preview";
 
